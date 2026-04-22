@@ -1,11 +1,24 @@
 import pandas as pd
+from datasets import load_dataset as hf_load_dataset
 
-def load_dataset(path, target_col="price"):
-    df = pd.read_csv(path, parse_dates=["time"]).sort_values("time")
-    df = df.set_index("time")
+
+def load_dataset(repo_id="CitrusBoy/EnergyPriceForecasting",
+                 subset="Gas",
+                 split="train",
+                 target_col="price"):
+    """
+    Download a dataset from the Hugging Face Hub and return (X, y) as
+    numpy arrays. Results are cached under ~/.cache/huggingface/datasets
+    after the first run, so subsequent runs don't re-download.
+    """
+    ds = hf_load_dataset(repo_id, subset, split=split)
+    df = ds.to_pandas()
+    df["time"] = pd.to_datetime(df["time"])
+    df = df.sort_values("time").set_index("time")
     y = df[target_col].values
     X = df.drop(columns=[target_col]).values
     return X, y
+
 
 def chronological_split(X, y, train_ratio=0.7, val_ratio=0.15):
     n = len(X)

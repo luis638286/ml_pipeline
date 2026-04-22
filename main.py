@@ -9,7 +9,8 @@ from pipeline.experiment import Experiment
 from pipeline.experiment_runner import ExperimentRunner
 
 # Defaults — adjustable via main() arguments
-DATA_PATH_DEFAULT   = "data/final_dataset_full_clean.csv"
+HF_REPO_DEFAULT     = "CitrusBoy/EnergyPriceForecasting"
+HF_SUBSET_DEFAULT   = "Without_Gas"
 INPUT_LEN_DEFAULT   = 168    # 1 week lookback
 HORIZON_DEFAULT     = 48     # 48h forecast
 TRAIN_RATIO_DEFAULT = 0.7
@@ -18,12 +19,13 @@ VAL_RATIO_DEFAULT   = 0.15
 def mae(y_true, y_pred):
     return np.mean(np.abs(np.asarray(y_true) - np.asarray(y_pred)))
 
-def main(data_path=DATA_PATH_DEFAULT,
+def main(repo_id=HF_REPO_DEFAULT,
+         subset=HF_SUBSET_DEFAULT,
          input_len=INPUT_LEN_DEFAULT,
          horizon=HORIZON_DEFAULT,
          train_ratio=TRAIN_RATIO_DEFAULT,
          val_ratio=VAL_RATIO_DEFAULT):
-    X, y = load_dataset(data_path)
+    X, y = load_dataset(repo_id, subset)
     X_tr, y_tr, X_val, y_val, X_te, y_te = chronological_split(
         X, y, train_ratio, val_ratio
     )
@@ -32,7 +34,8 @@ def main(data_path=DATA_PATH_DEFAULT,
         Experiment("Mean baseline",   IdentityPreprocessor(), MeanModel()),
         Experiment("Zero baseline",   IdentityPreprocessor(), ZeroModel()),
         Experiment("MinMax + Mean",   MinMaxPreprocessor(),   MeanModel()),
-        Experiment("Mean (2wk->1d)",  IdentityPreprocessor(), MeanModel(), input_len=336, horizon=24),
+        Experiment("Mean (2wk->1d)",  IdentityPreprocessor(), MeanModel(),
+                   input_len=336, horizon=24),
     ]
 
     runner = ExperimentRunner()
