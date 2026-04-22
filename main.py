@@ -15,7 +15,7 @@ def mae(y_true, y_pred):
     return np.mean(np.abs(np.asarray(y_true) - np.asarray(y_pred)))
 
 def main():
-    X, y = load_dataset("final_dataset_full_clean.csv")
+    X, y = load_dataset("data/final_dataset_full_clean.csv")
     X_tr, y_tr, X_val, y_val, X_te, y_te = chronological_split(X, y)
 
     # Fit scaler on train, apply to all
@@ -36,3 +36,6 @@ def main():
 
     for r in results:
         print(f"{r['experiment_name']:20} | MAE: {mae(yw_te, r['predictions']):.3f} €/MWh")
+
+    if __name__ == "__main__":
+     main()
