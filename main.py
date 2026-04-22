@@ -1,78 +1,38 @@
-from preprocessors.identity_preprocessor import IdentityPreprocessor
 from preprocessors.minmax_preprocessor import MinMaxPreprocessor
-from preprocessors.pipeline_preprocessor import PipelinePreprocessor
+from preprocessors.identity_preprocessor import IdentityPreprocessor
 from models.dummy_model import DummyModel
 from pipeline.experiment import Experiment
 from pipeline.experiment_runner import ExperimentRunner
 import random
 
 def accuracy(y_true, y_pred):
-    correct = sum(1 for a, b in zip(y_true, y_pred) if a == b)
-    return correct / len(y_true)
+    return sum(a == b for a, b in zip(y_true, y_pred)) / len(y_true)
 
-def generate_dataset(n_samples=100):
-    X = []
-    y = []
-
-    for i in range(n_samples):
-        # Features
-        x1 = random.uniform(0, 10)
-        x2 = random.uniform(0, 10)
-
-        # Add some pattern + noise
-        noise = random.uniform(-1, 1)
-
-        # Simple rule: if sum > threshold → class 1
-        label = 1 if (x1 + x2 + noise) > 10 else 0
-
+def generate_dataset(n=200):
+    X, y = [], []
+    for _ in range(n):
+        x1, x2 = random.uniform(0, 10), random.uniform(0, 10)
+        y.append(1 if (x1 + x2 + random.uniform(-1, 1)) > 10 else 0)
         X.append([x1, x2])
-        y.append(label)
-
     return X, y
 
-
 def main():
-    # Generate data
-    X, y = generate_dataset(200)
+    X, y = generate_dataset()
+    split = int(0.8 * len(X))
+    X_train, y_train = X[:split], y[:split]
+    X_test, y_test = X[split:], y[split:]
 
-    # Split manually (80/20)
-    split_index = int(0.8 * len(X))
+    experiments = [
+        Experiment("Exp.1a - MinMax + Dummy",    MinMaxPreprocessor(), DummyModel()),
+        Experiment("Exp.1b - Identity + Dummy",  IdentityPreprocessor(), DummyModel()),
+    ]
 
-    X_train = X[:split_index]
-    y_train = y[:split_index]
-
-    X_test = X[split_index:]
-    y_test = y[split_index:]
-
-    # Single preprocessor
-    preprocessor1 = MinMaxPreprocessor()
-
-    # Another preprocessor
-    preprocessor2 = IdentityPreprocessor()
-
-    # Chain them into one pipeline
-    combined_preprocessor = PipelinePreprocessor([
-        preprocessor1,
-        preprocessor2
-    ])
-
-    model = DummyModel()
-
-    experiment = Experiment(
-        name="Exp.1.a - MinMax + Identity + DummyModel",
-        preprocessor=combined_preprocessor,
-        model=model
-    )
-    
     runner = ExperimentRunner()
-    result = runner.run(experiment, X_train, y_train, X_test)
-    predictions = result["predictions"]
+    results = runner.run_all(experiments, X_train, y_train, X_test)
 
-    acc = accuracy(y_test, predictions)
-
-    print("Experiment:", result["experiment_name"])
-    print("Accuracy:", acc)
-
+    for result in results:
+        acc = accuracy(y_test, result["predictions"])
+        print(f"{result['experiment_name']} | Accuracy: {acc:.2%}")
 
 if __name__ == "__main__":
     main()
