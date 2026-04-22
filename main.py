@@ -1,38 +1,38 @@
+import numpy as np
+from data.loader import load_dataset, chronological_split
+from data.windowing import make_windows
 from preprocessors.minmax_preprocessor import MinMaxPreprocessor
 from preprocessors.identity_preprocessor import IdentityPreprocessor
-from models.dummy_model import DummyModel
+from models.mean_model import MeanModel
+from models.zero_model import ZeroModel
 from pipeline.experiment import Experiment
 from pipeline.experiment_runner import ExperimentRunner
-import random
 
-def accuracy(y_true, y_pred):
-    return sum(a == b for a, b in zip(y_true, y_pred)) / len(y_true)
+INPUT_LEN = 168   # 1 week lookback
+HORIZON   = 48    # 48h forecast
 
-def generate_dataset(n=200):
-    X, y = [], []
-    for _ in range(n):
-        x1, x2 = random.uniform(0, 10), random.uniform(0, 10)
-        y.append(1 if (x1 + x2 + random.uniform(-1, 1)) > 10 else 0)
-        X.append([x1, x2])
-    return X, y
+def mae(y_true, y_pred):
+    return np.mean(np.abs(np.asarray(y_true) - np.asarray(y_pred)))
 
 def main():
-    X, y = generate_dataset()
-    split = int(0.8 * len(X))
-    X_train, y_train = X[:split], y[:split]
-    X_test, y_test = X[split:], y[split:]
+    X, y = load_dataset("final_dataset_full_clean.csv")
+    X_tr, y_tr, X_val, y_val, X_te, y_te = chronological_split(X, y)
+
+    # Fit scaler on train, apply to all
+    scaler = MinMaxPreprocessor().fit(X_tr)
+    X_tr_s, X_te_s = scaler.transform(X_tr), scaler.transform(X_te)
+
+    # Window
+    Xw_tr, yw_tr = make_windows(X_tr_s, y_tr, INPUT_LEN, HORIZON)
+    Xw_te, yw_te = make_windows(X_te_s, y_te, INPUT_LEN, HORIZON)
 
     experiments = [
-        Experiment("Exp.1a - MinMax + Dummy",    MinMaxPreprocessor(), DummyModel()),
-        Experiment("Exp.1b - Identity + Dummy",  IdentityPreprocessor(), DummyModel()),
+        Experiment("Mean baseline", IdentityPreprocessor(), MeanModel()),
+        Experiment("Zero baseline", IdentityPreprocessor(), ZeroModel()),
     ]
 
     runner = ExperimentRunner()
-    results = runner.run_all(experiments, X_train, y_train, X_test)
+    results = runner.run_all(experiments, Xw_tr, yw_tr, Xw_te)
 
-    for result in results:
-        acc = accuracy(y_test, result["predictions"])
-        print(f"{result['experiment_name']} | Accuracy: {acc:.2%}")
-
-if __name__ == "__main__":
-    main()
+    for r in results:
+        print(f"{r['experiment_name']:20} | MAE: {mae(yw_te, r['predictions']):.3f} €/MWh")
