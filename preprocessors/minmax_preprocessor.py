@@ -1,10 +1,12 @@
 from interfaces.base_preprocessor import BasePreprocessor
 import numpy as np
+
 class MinMaxPreprocessor(BasePreprocessor):
     def fit(self, X):
         X = np.asarray(X)
-        self.mins = X.min(axis=0)
-        self.maxs = X.max(axis=0)
+        flat = X.reshape(-1, X.shape[-1])
+        self.mins = flat.min(axis=0)
+        self.maxs = flat.max(axis=0)
         self.span = np.where(self.maxs - self.mins == 0, 1, self.maxs - self.mins)
         return self
 

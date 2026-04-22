@@ -3,7 +3,7 @@ from interfaces.base_model import BaseModel
 
 
 class Experiment:
-    def __init__(self, name, preprocessor, model):
+    def __init__(self, name, preprocessor, model, input_len=None, horizon=None):
         if not isinstance(preprocessor, BasePreprocessor):
             raise TypeError("preprocessor must inherit from BasePreprocessor.")
 
@@ -13,3 +13,5 @@ class Experiment:
         self.name = name
         self.preprocessor = preprocessor
         self.model = model
+        self.input_len = input_len
+        self.horizon = horizon

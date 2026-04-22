@@ -8,34 +8,45 @@ from models.zero_model import ZeroModel
 from pipeline.experiment import Experiment
 from pipeline.experiment_runner import ExperimentRunner
 
-INPUT_LEN = 168   # 1 week lookback
-HORIZON   = 48    # 48h forecast
+# Defaults — adjustable via main() arguments
+DATA_PATH_DEFAULT   = "data/final_dataset_full_clean.csv"
+INPUT_LEN_DEFAULT   = 168    # 1 week lookback
+HORIZON_DEFAULT     = 48     # 48h forecast
+TRAIN_RATIO_DEFAULT = 0.7
+VAL_RATIO_DEFAULT   = 0.15
 
 def mae(y_true, y_pred):
     return np.mean(np.abs(np.asarray(y_true) - np.asarray(y_pred)))
 
-def main():
-    X, y = load_dataset("data/final_dataset_full_clean.csv")
-    X_tr, y_tr, X_val, y_val, X_te, y_te = chronological_split(X, y)
-
-    # Fit scaler on train, apply to all
-    scaler = MinMaxPreprocessor().fit(X_tr)
-    X_tr_s, X_te_s = scaler.transform(X_tr), scaler.transform(X_te)
-
-    # Window
-    Xw_tr, yw_tr = make_windows(X_tr_s, y_tr, INPUT_LEN, HORIZON)
-    Xw_te, yw_te = make_windows(X_te_s, y_te, INPUT_LEN, HORIZON)
+def main(data_path=DATA_PATH_DEFAULT,
+         input_len=INPUT_LEN_DEFAULT,
+         horizon=HORIZON_DEFAULT,
+         train_ratio=TRAIN_RATIO_DEFAULT,
+         val_ratio=VAL_RATIO_DEFAULT):
+    X, y = load_dataset(data_path)
+    X_tr, y_tr, X_val, y_val, X_te, y_te = chronological_split(
+        X, y, train_ratio, val_ratio
+    )
 
     experiments = [
-        Experiment("Mean baseline", IdentityPreprocessor(), MeanModel()),
-        Experiment("Zero baseline", IdentityPreprocessor(), ZeroModel()),
+        Experiment("Mean baseline",   IdentityPreprocessor(), MeanModel()),
+        Experiment("Zero baseline",   IdentityPreprocessor(), ZeroModel()),
+        Experiment("MinMax + Mean",   MinMaxPreprocessor(),   MeanModel()),
+        Experiment("Mean (2wk->1d)",  IdentityPreprocessor(), MeanModel(), input_len=336, horizon=24),
     ]
 
     runner = ExperimentRunner()
-    results = runner.run_all(experiments, Xw_tr, yw_tr, Xw_te)
+    for exp in experiments:
+        il = exp.input_len if exp.input_len is not None else input_len
+        hz = exp.horizon   if exp.horizon   is not None else horizon
 
-    for r in results:
-        print(f"{r['experiment_name']:20} | MAE: {mae(yw_te, r['predictions']):.3f} €/MWh")
+        Xw_tr, yw_tr = make_windows(X_tr, y_tr, il, hz)
+        Xw_te, yw_te = make_windows(X_te, y_te, il, hz)
 
-    if __name__ == "__main__":
-     main()
+        result = runner.run(exp, Xw_tr, yw_tr, Xw_te)
+        print(f"{result['experiment_name']:20} | "
+              f"win={il}->{hz} | "
+              f"MAE: {mae(yw_te, result['predictions']):.3f} €/MWh")
+
+if __name__ == "__main__":
+    main()
