@@ -24,8 +24,7 @@ def run_experiments(experiments,
                     seed=42):
     """Core application entrypoint. Takes a list of experiments, runs them all.
 
-    Experiments can be built elsewhere (by CitrusBoy, by tests, by future code)
-    and handed in. The app handles data loading, splitting, windowing, and
+    Experiments can be built elsewhere and handed in. The app handles data loading, splitting, windowing, and
     result collection — not which experiments to run.
     """
     random.seed(seed)
