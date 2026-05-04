@@ -7,11 +7,11 @@ from data.loader import load_dataset, chronological_split
 from pipeline.experiment import Experiment
 from pipeline.experiment_runner import ExperimentRunner
 
-# Example baselines (demo only — real experiments come from elsewhere)
-from preprocessors.identity_preprocessor import IdentityPreprocessor
-from preprocessors.minmax_preprocessor import MinMaxPreprocessor
-from models.mean_model import MeanModel
-from models.zero_model import ZeroModel
+# Example baselines (You can import your own models/preprocessors here)
+from test_models_and_preprocessors.identity_preprocessor import IdentityPreprocessor
+from test_models_and_preprocessors.minmax_preprocessor import MinMaxPreprocessor
+from test_models_and_preprocessors.mean_model import MeanModel
+from test_models_and_preprocessors.zero_model import ZeroModel
 
 
 def run_experiments(experiments,
@@ -67,6 +67,7 @@ def demo():
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
+# Define experiments to run. Each experiment is a (name, preprocessor, model) tuple.
     experiments = [
         Experiment("Mean baseline",  IdentityPreprocessor(), MeanModel()),
         Experiment("Zero baseline",  IdentityPreprocessor(), ZeroModel()),
